@@ -1,0 +1,147 @@
+{
+  "design_system": {
+    "typography": {
+      "font_family": {
+        "headings": "Manrope, sans-serif",
+        "body": "Public Sans, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-4xl md:text-5xl font-bold tracking-tight",
+        "h2": "text-3xl md:text-4xl font-semibold tracking-tight",
+        "h3": "text-2xl font-semibold tracking-tight",
+        "body_large": "text-lg leading-relaxed",
+        "body_base": "text-base leading-relaxed",
+        "caption": "text-sm text-muted-foreground",
+        "label": "text-xs font-medium uppercase tracking-wider text-muted-foreground"
+      },
+      "imports": [
+        "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Public+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');"
+      ]
+    },
+    "colors": {
+      "palette": {
+        "brand": {
+          "primary": "#4338ca",
+          "secondary": "#312e81",
+          "accent": "#6366f1"
+        },
+        "semantic": {
+          "success": "#10b981",
+          "warning": "#f59e0b",
+          "error": "#f43f5e",
+          "info": "#3b82f6"
+        },
+        "neutral": {
+          "light": "#ffffff",
+          "dark": "#09090b",
+          "surface": "#f4f4f5",
+          "border": "#e4e4e7"
+        }
+      },
+      "theme_strategy": "Swiss High-Contrast. Light mode is stark white with black text. Dark mode is deep zinc (not pure black).",
+      "gradients": "Avoid gradients for backgrounds. Use them only for subtle 'glow' effects on active states or borders."
+    },
+    "spacing": {
+      "scale": "Tailwind default but doubled for layout containers. p-8 or p-12 for main sections.",
+      "grid_gap": "gap-6 for dashboard, gap-12 for marketing pages."
+    },
+    "visual_enhancers": {
+      "radius": "rounded-none (Sharp) or rounded-sm (2px) for a technical financial look.",
+      "shadows": "shadow-sm for cards, shadow-xl for floating elements. Avoid heavy drop shadows.",
+      "borders": "1px solid border-border. Use 'border-r' and 'border-b' patterns for grid layouts.",
+      "textures": "Subtle noise overlay (opacity 0.03) on backgrounds to prevent digital flatness."
+    },
+    "animation": {
+      "micro_interactions": "transition-all duration-200 ease-out",
+      "page_transition": "opacity-0 to opacity-100 duration-300",
+      "hover_lift": "hover:-translate-y-0.5 hover:shadow-md"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 rounded-sm font-medium transition-all",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-6 rounded-sm",
+      "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-6 rounded-sm",
+      "ghost": "hover:bg-accent hover:text-accent-foreground h-10 px-4 rounded-sm"
+    },
+    "cards": {
+      "dashboard": "bg-card text-card-foreground border border-border rounded-sm p-6 shadow-sm hover:border-primary/20 transition-colors",
+      "stat": "bg-background border-r border-b border-border p-6 flex flex-col gap-2"
+    },
+    "inputs": {
+      "default": "flex h-10 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "tables": {
+      "wrapper": "w-full overflow-auto border border-border rounded-sm",
+      "header": "bg-muted/50 text-muted-foreground font-medium text-xs uppercase tracking-wider",
+      "row": "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+    }
+  },
+  "layout_strategies": {
+    "dashboard": {
+      "type": "Bento Grid (High Density)",
+      "structure": "Sidebar navigation (fixed left) + Main Content Area (scrollable).",
+      "grid": "grid grid-cols-1 md:grid-cols-12 gap-4 p-6",
+      "widgets": {
+        "summary": "col-span-12 md:col-span-12 lg:col-span-8",
+        "actions": "col-span-12 md:col-span-6 lg:col-span-4",
+        "list": "col-span-12"
+      }
+    },
+    "auth_page": {
+      "type": "Split Screen",
+      "structure": "Left: 50% width, Image/Brand. Right: 50% width, Form centered.",
+      "mobile": "Stack: Image top (hidden or small), Form bottom."
+    }
+  },
+  "assets": {
+    "images": {
+      "auth_background": {
+        "url": "https://images.unsplash.com/photo-1582275075490-464c87296fc8?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Minimalist White Architecture",
+        "usage": "Cover image for login/signup page left panel."
+      },
+      "user_avatar": {
+        "url": "https://images.unsplash.com/photo-1767175620484-1ed37931a0d1?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "User Profile",
+        "usage": "Default avatar for dashboard header."
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px (thin, elegant)",
+      "mapping": {
+        "dashboard": "LayoutDashboard",
+        "assets": "PieChart",
+        "alerts": "Bell",
+        "settings": "Settings",
+        "history": "History",
+        "trending_up": "TrendingUp",
+        "trending_down": "TrendingDown",
+        "plus": "Plus",
+        "trash": "Trash2",
+        "edit": "Pencil"
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "Implement the 'Swiss High-Contrast' theme: Strict grids, high contrast text, minimal decoration.",
+    "Use 'Manrope' for all headings and 'Public Sans' for body text. Import them in index.css.",
+    "For the Dashboard, use a 'Bento Grid' layout. Do not just stack cards vertically.",
+    "Use the provided image URLs for the Auth page and User Avatar.",
+    "Ensure all financial data (prices, percentages) uses the 'JetBrains Mono' font for alignment.",
+    "Color positive values in 'text-emerald-600' and negative in 'text-rose-600'.",
+    "Add 'data-testid' to all interactive elements (buttons, inputs, links).",
+    "Use 'sonner' for toast notifications.",
+    "Do not use gradients for backgrounds. Keep it flat and clean.",
+    "For charts, use Recharts with the custom color palette defined above."
+  ],
+  "universal_guidelines": [
+    "Avoid 'AI slop' aesthetics (generic centered layouts, blue gradients).",
+    "Use 2-3x more spacing than typical. p-8 is the new p-4.",
+    "Micro-animations on every interaction (hover, focus, active).",
+    "Dark mode must be 'Zinc-950', not pure black.",
+    "Glassmorphism: Use backdrop-blur-md with a subtle white/10 border for overlays."
+  ]
+}
