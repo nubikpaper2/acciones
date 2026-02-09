@@ -1,34 +1,57 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+.App {
+  min-height: 100vh;
+  background-color: hsl(var(--background));
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.auth-bg {
+  background-image: url('https://images.unsplash.com/photo-1582275075490-464c87296fc8?crop=entropy&cs=srgb&fm=jpg&q=85');
+  background-size: cover;
+  background-position: center;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.stat-card {
+  transition: all 0.2s ease-out;
 }
 
-.App-link {
-    color: #61dafb;
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.asset-row {
+  transition: background-color 0.2s ease-out;
+}
+
+.asset-row:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.price-positive {
+  color: #10b981;
+}
+
+.price-negative {
+  color: #f43f5e;
+}
+
+.btn-action {
+  transition: all 0.2s ease-out;
+}
+
+.btn-action:hover {
+  transform: translateY(-1px);
+}
+
+.loading-spinner {
+  border: 3px solid hsl(var(--muted));
+  border-top: 3px solid hsl(var(--primary));
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
