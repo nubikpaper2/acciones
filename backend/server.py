@@ -182,7 +182,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-async def get_price_from_yahoo(ticker: str) -> Optional[float]:
+def get_price_from_yahoo_sync(ticker: str) -> Optional[float]:
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(period="1d")
@@ -194,7 +194,7 @@ async def get_price_from_yahoo(ticker: str) -> Optional[float]:
 
 async def get_current_price(ticker: str) -> Optional[float]:
     # Try Yahoo Finance first
-    price = await asyncio.to_thread(lambda: get_price_from_yahoo(ticker))
+    price = await asyncio.to_thread(get_price_from_yahoo_sync, ticker)
     if price:
         return price
     
