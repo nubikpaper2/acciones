@@ -718,6 +718,66 @@ async def get_current_price_endpoint(ticker: str):
         raise HTTPException(status_code=404, detail="Price not available")
     return {"ticker": ticker, "price": price, "timestamp": datetime.now(timezone.utc).isoformat()}
 
+@api_router.get("/prices/{ticker}/history")
+async def get_price_history_from_yahoo(ticker: str, market: str = "NYSE", asset_type: str = "CEDEAR", period: str = "1mo"):
+    """Obtiene el historial de precios de Yahoo Finance"""
+    yahoo_ticker = get_yahoo_ticker(ticker, market, asset_type)
+    
+    try:
+        url = f'https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_ticker}'
+        
+        # Mapear período a intervalo apropiado
+        interval_map = {
+            "1d": "5m",
+            "5d": "15m", 
+            "1mo": "1d",
+            "3mo": "1d",
+            "6mo": "1d",
+            "1y": "1wk",
+            "5y": "1mo"
+        }
+        interval = interval_map.get(period, "1d")
+        
+        params = {'interval': interval, 'range': period}
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'chart' in data and 'result' in data['chart'] and data['chart']['result']:
+                result = data['chart']['result'][0]
+                timestamps = result.get('timestamp', [])
+                quotes = result.get('indicators', {}).get('quote', [{}])[0]
+                closes = quotes.get('close', [])
+                
+                # Construir array de datos para el gráfico
+                history = []
+                for i, ts in enumerate(timestamps):
+                    if closes[i] is not None:
+                        history.append({
+                            "date": datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M'),
+                            "price": round(closes[i], 2)
+                        })
+                
+                # Obtener precio actual
+                current_price = None
+                if 'meta' in result and 'regularMarketPrice' in result['meta']:
+                    current_price = result['meta']['regularMarketPrice']
+                
+                return {
+                    "ticker": ticker,
+                    "yahoo_ticker": yahoo_ticker,
+                    "current_price": current_price,
+                    "period": period,
+                    "history": history
+                }
+        
+        raise HTTPException(status_code=404, detail="Price history not available")
+    except Exception as e:
+        logging.error(f"Error fetching price history for {ticker}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/test/price/{ticker}")
 async def test_price_endpoint(ticker: str, market: str = "BCBA", asset_type: str = "Acción"):
     """Test endpoint para diagnosticar precios con parámetros"""
