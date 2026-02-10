@@ -243,11 +243,41 @@ def get_price_from_yahoo_sync(ticker: str) -> Optional[float]:
         logging.error(f"Yahoo Finance error for {ticker}: {e}")
     return None
 
-async def get_current_price(ticker: str) -> Optional[float]:
-    # Try Yahoo Finance first
-    price = await asyncio.to_thread(get_price_from_yahoo_sync, ticker)
+def get_yahoo_ticker(ticker: str, market: str, asset_type: str) -> str:
+    """Convierte el ticker al formato de Yahoo Finance según el mercado"""
+    ticker_upper = ticker.upper()
+    
+    # CEDEARs - usar el ticker de NYSE/NASDAQ directamente
+    if asset_type == "CEDEAR":
+        return ticker_upper
+    
+    # Acciones argentinas - agregar sufijo .BA
+    if market == "BCBA" and asset_type == "Acción":
+        return f"{ticker_upper}.BA"
+    
+    # Obligaciones Negociables argentinas
+    if asset_type == "Obligación Negociable":
+        return f"{ticker_upper}.BA"
+    
+    # Por defecto, retornar el ticker tal cual
+    return ticker_upper
+
+async def get_current_price(ticker: str, market: str = "NYSE", asset_type: str = "CEDEAR") -> Optional[float]:
+    # Convertir ticker al formato de Yahoo Finance
+    yahoo_ticker = get_yahoo_ticker(ticker, market, asset_type)
+    logging.info(f"Fetching price for {ticker} -> Yahoo ticker: {yahoo_ticker}")
+    
+    # Try Yahoo Finance
+    price = await asyncio.to_thread(get_price_from_yahoo_sync, yahoo_ticker)
     if price:
         return price
+    
+    # Si falla con .BA, intentar sin sufijo (por si es un ADR)
+    if yahoo_ticker != ticker.upper():
+        logging.info(f"Retrying without suffix: {ticker.upper()}")
+        price = await asyncio.to_thread(get_price_from_yahoo_sync, ticker.upper())
+        if price:
+            return price
     
     # Could add Google Finance fallback here if needed
     logging.warning(f"Could not fetch price for {ticker}")
@@ -298,65 +328,75 @@ async def check_prices_and_alerts():
     try:
         # Get all assets
         assets = supabase_get("assets", {})
-        tickers = list(set([asset['ticker'] for asset in assets]))
         
-        for ticker in tickers:
-            price = await get_current_price(ticker)
+        # Group assets by ticker to avoid duplicate API calls
+        checked_tickers = {}
+        
+        for asset in assets:
+            ticker = asset['ticker']
+            market = asset.get('market', 'NYSE')
+            asset_type = asset.get('asset_type', 'CEDEAR')
+            ticker_key = f"{ticker}_{market}_{asset_type}"
+            
+            if ticker_key not in checked_tickers:
+                price = await get_current_price(ticker, market, asset_type)
+                checked_tickers[ticker_key] = price
+                if price:
+                    await save_price_history(ticker, price)
+            else:
+                price = checked_tickers[ticker_key]
+            
             if price:
-                await save_price_history(ticker, price)
+                # Check alerts for this asset
+                alerts = supabase_get("alerts", {"asset_id": f"eq.{asset['id']}", "is_active": "eq.true"})
                 
-                # Check alerts for this ticker
-                ticker_assets = [a for a in assets if a['ticker'] == ticker]
-                for asset in ticker_assets:
-                    alerts = supabase_get("alerts", {"asset_id": f"eq.{asset['id']}", "is_active": "eq.true"})
+                for alert in alerts:
+                    should_trigger = False
+                    message = ""
                     
-                    for alert in alerts:
-                        should_trigger = False
-                        message = ""
+                    if alert['is_percentage']:
+                        threshold = float(asset['avg_purchase_price']) * (1 + float(alert['target_value']) / 100)
+                    else:
+                        threshold = float(alert['target_value'])
+                    
+                    if alert['alert_type'] == 'target_buy' and price <= threshold:
+                        should_trigger = True
+                        message = f"El precio ha alcanzado tu objetivo de compra: ${price:.2f}"
+                    elif alert['alert_type'] == 'target_sell' and price >= threshold:
+                        should_trigger = True
+                        message = f"El precio ha alcanzado tu objetivo de venta: ${price:.2f}"
+                    elif alert['alert_type'] == 'stop_loss' and price <= threshold:
+                        should_trigger = True
+                        message = f"¡STOP LOSS activado! Precio actual: ${price:.2f}"
+                    elif alert['alert_type'] == 'take_profit' and price >= threshold:
+                        should_trigger = True
+                        message = f"¡TAKE PROFIT alcanzado! Precio actual: ${price:.2f}"
+                    
+                    if should_trigger:
+                        # Save in-app notification
+                        await save_notification(
+                            alert['user_id'],
+                            ticker,
+                            alert['alert_type'],
+                            price,
+                            message
+                        )
                         
-                        if alert['is_percentage']:
-                            threshold = float(asset['avg_purchase_price']) * (1 + float(alert['target_value']) / 100)
-                        else:
-                            threshold = float(alert['target_value'])
+                        # Save to history
+                        history_doc = {
+                            "id": str(uuid.uuid4()),
+                            "user_id": alert['user_id'],
+                            "asset_id": asset['id'],
+                            "ticker": ticker,
+                            "alert_type": alert['alert_type'],
+                            "current_price": price,
+                            "message": message,
+                            "sent_at": datetime.now(timezone.utc).isoformat()
+                        }
+                        supabase_post("alert_history", history_doc)
                         
-                        if alert['alert_type'] == 'target_buy' and price <= threshold:
-                            should_trigger = True
-                            message = f"El precio ha alcanzado tu objetivo de compra: ${price:.2f}"
-                        elif alert['alert_type'] == 'target_sell' and price >= threshold:
-                            should_trigger = True
-                            message = f"El precio ha alcanzado tu objetivo de venta: ${price:.2f}"
-                        elif alert['alert_type'] == 'stop_loss' and price <= threshold:
-                            should_trigger = True
-                            message = f"¡STOP LOSS activado! Precio actual: ${price:.2f}"
-                        elif alert['alert_type'] == 'take_profit' and price >= threshold:
-                            should_trigger = True
-                            message = f"¡TAKE PROFIT alcanzado! Precio actual: ${price:.2f}"
-                        
-                        if should_trigger:
-                            # Save in-app notification
-                            await save_notification(
-                                alert['user_id'],
-                                ticker,
-                                alert['alert_type'],
-                                price,
-                                message
-                            )
-                            
-                            # Save to history
-                            history_doc = {
-                                "id": str(uuid.uuid4()),
-                                "user_id": alert['user_id'],
-                                "asset_id": asset['id'],
-                                "ticker": ticker,
-                                "alert_type": alert['alert_type'],
-                                "current_price": price,
-                                "message": message,
-                                "sent_at": datetime.now(timezone.utc).isoformat()
-                            }
-                            supabase_post("alert_history", history_doc)
-                            
-                            # Deactivate alert
-                            supabase_patch("alerts", {"id": alert['id']}, {"is_active": False})
+                        # Deactivate alert
+                        supabase_patch("alerts", {"id": alert['id']}, {"is_active": False})
                                 
         logging.info("Price check and alert evaluation completed")
     except Exception as e:
@@ -487,7 +527,7 @@ async def get_portfolio_summary(user_id: str = Depends(get_current_user)):
         investment = float(asset['quantity']) * float(asset['avg_purchase_price'])
         total_investment += investment
         
-        price = await get_current_price(asset['ticker'])
+        price = await get_current_price(asset['ticker'], asset.get('market', 'NYSE'), asset.get('asset_type', 'CEDEAR'))
         if price:
             current_value += float(asset['quantity']) * price
         else:
@@ -513,7 +553,7 @@ async def get_assets_with_prices(user_id: str = Depends(get_current_user)):
         asset = Asset(asset_id=a['id'], user_id=a['user_id'], asset_type=a['asset_type'], 
                      ticker=a['ticker'], quantity=a['quantity'], avg_purchase_price=a['avg_purchase_price'],
                      purchase_date=a['purchase_date'], market=a['market'], created_at=a.get('created_at', ''))
-        price = await get_current_price(asset.ticker)
+        price = await get_current_price(asset.ticker, asset.market, asset.asset_type)
         
         if price:
             current_value = float(asset.quantity) * price
