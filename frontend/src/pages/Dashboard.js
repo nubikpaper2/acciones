@@ -16,6 +16,7 @@ import AlertsList from '@/components/AlertsList';
 import AlertHistoryList from '@/components/AlertHistoryList';
 import AssetModal from '@/components/AssetModal';
 import AlertModal from '@/components/AlertModal';
+import NotificationsDropdown from '@/components/NotificationsDropdown';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -200,12 +201,17 @@ const Dashboard = ({ user, onLogout }) => {
               </p>
             </div>
 
-            {activeTab === 'assets' && (
-              <Button onClick={handleAddAsset} data-testid="add-asset-button">
-                <Plus className="w-4 h-4 mr-2" />
-                Agregar Activo
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Notifications Bell */}
+              <NotificationsDropdown token={token} />
+
+              {activeTab === 'assets' && (
+                <Button onClick={handleAddAsset} data-testid="add-asset-button">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar Activo
+                </Button>
+              )}
+            </div>
           </div>
         </header>
 
