@@ -14,7 +14,6 @@ import jwt
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncio
-import yfinance as yf
 import resend
 import requests
 
@@ -233,20 +232,41 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def get_price_from_yahoo_sync(ticker: str) -> Optional[float]:
+def get_price_from_yahoo_api(ticker: str) -> Optional[float]:
+    """Obtiene precio usando la API de Yahoo Finance directamente (más confiable que yfinance)"""
     try:
-        logging.info(f"Calling yfinance for ticker: {ticker}")
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period="1d")
-        logging.info(f"yfinance history for {ticker}: shape={hist.shape}, empty={hist.empty}")
-        if not hist.empty:
-            price = float(hist['Close'].iloc[-1])
-            logging.info(f"Got price for {ticker}: {price}")
-            return price
-        else:
-            logging.warning(f"Empty history for {ticker}")
+        logging.info(f"Calling Yahoo Finance API for ticker: {ticker}")
+        url = f'https://query1.finance.yahoo.com/v8/finance/chart/{ticker}'
+        params = {'interval': '1d', 'range': '1d'}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        logging.info(f"Yahoo API response status for {ticker}: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'chart' in data and 'result' in data['chart'] and data['chart']['result']:
+                result = data['chart']['result'][0]
+                # Intentar obtener el precio del mercado regular
+                if 'meta' in result and 'regularMarketPrice' in result['meta']:
+                    price = float(result['meta']['regularMarketPrice'])
+                    logging.info(f"Got price for {ticker}: {price}")
+                    return price
+                # Fallback: usar el último precio de cierre
+                if 'indicators' in result and 'quote' in result['indicators']:
+                    quotes = result['indicators']['quote'][0]
+                    if 'close' in quotes and quotes['close']:
+                        closes = [c for c in quotes['close'] if c is not None]
+                        if closes:
+                            price = float(closes[-1])
+                            logging.info(f"Got close price for {ticker}: {price}")
+                            return price
+        
+        logging.warning(f"No price data in Yahoo API response for {ticker}")
     except Exception as e:
-        logging.error(f"Yahoo Finance error for {ticker}: {e}")
+        logging.error(f"Yahoo Finance API error for {ticker}: {e}")
     return None
 
 def get_yahoo_ticker(ticker: str, market: str, asset_type: str) -> str:
@@ -275,21 +295,20 @@ async def get_current_price(ticker: str, market: str = "NYSE", asset_type: str =
     yahoo_ticker = get_yahoo_ticker(ticker, market, asset_type)
     logging.info(f"Fetching price for {ticker} (market={market}, type={asset_type}) -> Yahoo ticker: {yahoo_ticker}")
     
-    # Try Yahoo Finance
-    price = await asyncio.to_thread(get_price_from_yahoo_sync, yahoo_ticker)
-    logging.info(f"Yahoo Finance result for {yahoo_ticker}: {price}")
+    # Try Yahoo Finance API directamente
+    price = await asyncio.to_thread(get_price_from_yahoo_api, yahoo_ticker)
+    logging.info(f"Yahoo Finance API result for {yahoo_ticker}: {price}")
     if price:
         return price
     
     # Si falla con .BA, intentar sin sufijo (por si es un ADR)
     if yahoo_ticker != ticker.upper():
         logging.info(f"Retrying without suffix: {ticker.upper()}")
-        price = await asyncio.to_thread(get_price_from_yahoo_sync, ticker.upper())
+        price = await asyncio.to_thread(get_price_from_yahoo_api, ticker.upper())
         logging.info(f"Retry result for {ticker.upper()}: {price}")
         if price:
             return price
     
-    # Could add Google Finance fallback here if needed
     logging.warning(f"Could not fetch price for {ticker}")
     return None
 
