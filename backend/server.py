@@ -246,13 +246,15 @@ def get_price_from_yahoo_sync(ticker: str) -> Optional[float]:
 def get_yahoo_ticker(ticker: str, market: str, asset_type: str) -> str:
     """Convierte el ticker al formato de Yahoo Finance según el mercado"""
     ticker_upper = ticker.upper()
+    market_upper = market.upper() if market else ""
     
     # CEDEARs - usar el ticker de NYSE/NASDAQ directamente
     if asset_type == "CEDEAR":
         return ticker_upper
     
-    # Acciones argentinas - agregar sufijo .BA
-    if market == "BCBA" and asset_type == "Acción":
+    # Mercados argentinos - agregar sufijo .BA
+    argentine_markets = ["BCBA", "BYMA", "MERVAL", "BUENOS AIRES"]
+    if market_upper in argentine_markets and asset_type == "Acción":
         return f"{ticker_upper}.BA"
     
     # Obligaciones Negociables argentinas
