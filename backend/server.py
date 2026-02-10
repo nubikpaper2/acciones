@@ -699,6 +699,20 @@ async def get_current_price_endpoint(ticker: str):
         raise HTTPException(status_code=404, detail="Price not available")
     return {"ticker": ticker, "price": price, "timestamp": datetime.now(timezone.utc).isoformat()}
 
+@api_router.get("/test/price/{ticker}")
+async def test_price_endpoint(ticker: str, market: str = "BCBA", asset_type: str = "Acción"):
+    """Test endpoint para diagnosticar precios con parámetros"""
+    yahoo_ticker = get_yahoo_ticker(ticker, market, asset_type)
+    price = await get_current_price(ticker, market, asset_type)
+    return {
+        "ticker": ticker,
+        "market": market,
+        "asset_type": asset_type,
+        "yahoo_ticker": yahoo_ticker,
+        "price": price,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 # Test endpoint para verificar alertas manualmente
 @api_router.post("/alerts/check-now")
 async def check_alerts_now(user_id: str = Depends(get_current_user)):
