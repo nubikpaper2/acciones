@@ -235,10 +235,16 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 def get_price_from_yahoo_sync(ticker: str) -> Optional[float]:
     try:
+        logging.info(f"Calling yfinance for ticker: {ticker}")
         stock = yf.Ticker(ticker)
         hist = stock.history(period="1d")
+        logging.info(f"yfinance history for {ticker}: shape={hist.shape}, empty={hist.empty}")
         if not hist.empty:
-            return float(hist['Close'].iloc[-1])
+            price = float(hist['Close'].iloc[-1])
+            logging.info(f"Got price for {ticker}: {price}")
+            return price
+        else:
+            logging.warning(f"Empty history for {ticker}")
     except Exception as e:
         logging.error(f"Yahoo Finance error for {ticker}: {e}")
     return None
@@ -267,10 +273,11 @@ def get_yahoo_ticker(ticker: str, market: str, asset_type: str) -> str:
 async def get_current_price(ticker: str, market: str = "NYSE", asset_type: str = "CEDEAR") -> Optional[float]:
     # Convertir ticker al formato de Yahoo Finance
     yahoo_ticker = get_yahoo_ticker(ticker, market, asset_type)
-    logging.info(f"Fetching price for {ticker} -> Yahoo ticker: {yahoo_ticker}")
+    logging.info(f"Fetching price for {ticker} (market={market}, type={asset_type}) -> Yahoo ticker: {yahoo_ticker}")
     
     # Try Yahoo Finance
     price = await asyncio.to_thread(get_price_from_yahoo_sync, yahoo_ticker)
+    logging.info(f"Yahoo Finance result for {yahoo_ticker}: {price}")
     if price:
         return price
     
@@ -278,6 +285,7 @@ async def get_current_price(ticker: str, market: str = "NYSE", asset_type: str =
     if yahoo_ticker != ticker.upper():
         logging.info(f"Retrying without suffix: {ticker.upper()}")
         price = await asyncio.to_thread(get_price_from_yahoo_sync, ticker.upper())
+        logging.info(f"Retry result for {ticker.upper()}: {price}")
         if price:
             return price
     
